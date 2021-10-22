@@ -1,0 +1,42 @@
+#%RAML 1.0
+title: Claims Validate API
+version: 1.0
+
+types:
+  Claim: !include Claims.raml
+  Health: !include Health.raml
+  Status: !include Status.raml  
+
+/validatereference:
+  get:
+    displayName: Validate Claim Reference
+    queryParameters:
+      ClaimNumber:
+        displayName: Claim Number
+        required: true
+      ClaimantID:
+        displayName: ClaimantID
+        required: false
+    responses:
+      200:
+        body:
+          application/json:
+            type: Claim
+            examples:
+              output: !include ClaimsExample.raml
+/health:
+  get:
+    displayName: health
+    responses:
+      200:
+        body:
+          application/json:
+            type: Health
+/status:
+  get:
+    displayName: status
+    responses:
+      200:
+        body:
+          application/json:
+            type: Status         

@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+    http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <mirrors>
+        <mirror>
+            <id>nexus</id>
+            <mirrorOf>*,!Magellan,!mulesoft-releases,!anypoint-exchange-v2,!MuleSoft-repository</mirrorOf>
+            <name>IAG Nexus Repository</name>
+            <url>https://nexus3.auiag.corp/repos/repository/iag-public/</url>
+        </mirror>
+        <mirror>
+            <id>nexus1</id>
+            <mirrorOf>*</mirrorOf>
+            <name>IAG Magellan Nexus Repository</name>
+            <url>https://nexus3.auiag.corp/repos/repository/Magellan</url>
+            </mirror>
+            <!--<mirror>
+            <id>nexus2</id>
+            <mirrorOf>central</mirrorOf>
+            <name>IAG Central Repository</name>
+            <url>https://nexus3.auiag.corp/repos/repository/central
+        </mirror> -->
+    </mirrors>
+    <proxies>
+        <proxy>
+            <id>http</id>
+            <active>true</active>
+            <protocol>http</protocol>
+            <host>proxy.auiag.corp</host>
+            <port>8080</port>
+            <username>ldstat01\si556599</username>
+            <password></password>
+            <nonProxyHosts>*.auiag.corp</nonProxyHosts>
+        </proxy>
+        <proxy>
+            <id>https</id>
+            <active>true</active>
+            <protocol>https</protocol>
+            <host>proxy.auiag.corp</host>
+            <port>8080</port>
+            <username>ldstat01\si556599</username>
+            <password></password>
+            <nonProxyHosts>*.auiag.corp</nonProxyHosts>
+        </proxy>
+    </proxies>
+</settings>

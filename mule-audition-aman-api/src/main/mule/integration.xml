@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/wsc http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd">
+	<flow name="call_ccv8" doc:id="7e185a2f-ab27-4a2a-9eeb-816a77745a2f" >
+		<wsc:consume doc:name="CCv8_ValidateClaim" doc:id="6db891e3-29a0-462b-8f31-9b3c6e4dbf0b" config-ref="CCv8_Web_Service_Consumer_Config" operation="validateClaimExists">
+            <wsc:message>
+                <wsc:headers><![CDATA[#[%dw 2.0
+output application/xml
+ns ns0 http://guidewire.com/ws/soapheaders
+---
+headers : {
+	ns0#authentication : {
+		ns0#username: "${springcloud-properties-provider::ccv8.username}",
+		ns0#password: "${springcloud-properties-provider::ccv8.password}"
+	}        	
+}]]]></wsc:headers>
+            </wsc:message>
+        </wsc:consume>
+	</flow>
+</mule>

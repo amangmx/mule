@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="service-validate-claim" doc:id="42961ba0-71b9-4ef4-be91-ae193ef6e69c" >
+		<ee:transform xsi:schemaLocation=" http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd" doc:id="3e2ad488-2818-4dd7-a2bd-8964caf0a1e4" doc:name="Transform CCv8 Request">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/xml
+ns ns0 http://guidewire.com/ci/cc/webservice/cc/claim/IClaimValidationAPI
+---
+{
+	ns0#validateClaimExists: {
+		ns0#claimNumber: vars.claimNumber
+	}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+		<flow-ref doc:name="call_ccv8" doc:id="037bfa36-b9bc-4e2f-bf7d-c862598eddc6" name="call_ccv8" />
+		<ee:transform doc:name="Transform Claim Validate Reponse" doc:id="094c4271-3295-4ce1-a2aa-d78f94ba2483">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json skipNullOn = "everywhere"
+ns ns0 http://guidewire.com/ci/cc/webservice/cc/claim/IClaimValidationAPI
+ns ns01 http://guidewire.com/ci/cc/webservice/cc/claim/CCServiceResponse
+---
+{
+	ValidateClaimNumberResponse: {
+		ValidateClaim: {
+			ClaimNumber: vars.claimNumber as String,
+			SystemEndpoint: if (payload.body.ns0#validateClaimExistsResponse.ns0#return.ns01#ResponseCode == "OK") p('ccv8.wsdl') else null,
+			ClaimNumberExists: if (payload.body.ns0#validateClaimExistsResponse.ns0#return.ns01#ResponseCode == "OK") true else false as Boolean,
+			SourceSystem: if (payload.body.ns0#validateClaimExistsResponse.ns0#return.ns01#ResponseCode == "OK") "GCL" else null
+		}
+	}
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+	</flow>
+</mule>

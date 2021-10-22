@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:eureka-mule="http://www.mulesoft.org/schema/mule/eureka-mule" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:salesforce-analytics="http://www.mulesoft.org/schema/mule/salesforce-analytics" xmlns:springcloud-properties-provider="http://www.mulesoft.org/schema/mule/springcloud-properties-provider" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core  http://www.mulesoft.org/schema/mule/core/current/mule.xsd  http://www.mulesoft.org/schema/mule/http  http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd  http://www.mulesoft.org/schema/mule/mule-apikit  http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/wsc  http://www.mulesoft.org/schema/mule/wsc/current/mule-wsc.xsd http://www.mulesoft.org/schema/mule/ee/core  http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd http://www.mulesoft.org/schema/mule/eureka-mule http://www.mulesoft.org/schema/mule/eureka-mule/current/mule-eureka-mule.xsd http://www.mulesoft.org/schema/mule/springcloud-properties-provider http://www.mulesoft.org/schema/mule/springcloud-properties-provider/current/mule-springcloud-properties-provider.xsd">
+    <http:listener-config name="claims-validate-api-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <wsc:config name="CCv8_Web_Service_Consumer_Config" doc:name="Web Service Consumer Config" doc:id="2ef91418-8441-48e6-9fe8-e1efaff19b80" >
+        <wsc:connection wsdlLocation="${springcloud-properties-provider::ccv8.wsdl}" service="${springcloud-properties-provider::ccv8.service}" port="${springcloud-properties-provider::ccv8.port}" address="${springcloud-properties-provider::ccv8.address}" soapVersion="SOAP12"/>
+    </wsc:config>
+    <http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="acbea61f-130b-46a0-9682-4646e72dd5e5">
+        <http:request-connection host="localhost" port="8081" />
+    </http:request-config>
+    <apikit:config name="claims-validate-api-config" api="mule-audition-aman-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <flow name="mule-audition-api-main">
+        <http:listener config-ref="claims-validate-api-httpListenerConfig" path="/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body><![CDATA[#[payload]]]></http:body>
+                <http:headers><![CDATA[#[vars.outboundHeaders default {}]]]></http:headers>
+            </http:error-response>
+        </http:listener>
+		<flow-ref doc:name="Setup" doc:id="6fe3728e-41fd-4177-bc8b-1ca2d287086a" name="setup"/>
+		<apikit:router config-ref="claims-validate-api-config" />
+        <logger level="INFO" doc:name="Logger" doc:id="4da8f0f5-7f8c-4b84-acaf-e59dee2d06a1" category="api.audit" message="#['\n']## ${api.name} Sending API Response: #['\n']## Status Code: #[vars.httpStatus] #['\n']## Body: #[payload]"/>
+		<error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            
+			<on-error-propagate type="MULE:SECURITY" enableNotifications="true" logException="true">
+				<ee:transform
+					xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+					xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unauthorized"}]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="httpStatus">401
+						</ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</on-error-propagate>
+			            
+        </error-handler>
+    </flow>
+    <flow name="claims-validate-api-console">
+        <http:listener config-ref="claims-validate-api-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="claims-validate-api-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="api-docs">
+        <http:listener doc:name="Listener" doc:id="fc671b9a-0af6-417c-b09c-9d32c227fdfb" config-ref="claims-validate-api-httpListenerConfig" path="/api-docs">
+            <http:response>
+                <http:body><![CDATA[#[output text/plain --- payload]]]></http:body>
+            </http:response>
+        </http:listener>
+		<http:request method="GET" doc:name="Call console/api/?raml" doc:id="8c92a8c9-0f34-4024-ad8b-8f3101f24616" config-ref="HTTP_Request_configuration" path="/console/api/?raml" />
+    </flow>
+    <flow name="get:\health:claims-validate-api-config">
+        <set-payload value="#[%dw 2.0 output application/json --- {   status: &quot;UP&quot; }]" doc:name="Set Payload" doc:id="6d78c17e-8ced-4722-a8f5-ad05c1a4c4f8" />
+    </flow>
+    <flow name="get:\status:claims-validate-api-config">
+        <set-payload value="#[%dw 2.0 output application/json --- {   status: &quot;UP&quot; }]" doc:name="Set Payload" doc:id="4853bb53-8cf1-4fdf-b54f-22bee34e1ddf" />
+    </flow>
+    <flow name="get:\validatereference:claims-validate-api-config">
+        <set-variable value="#[message.attributes.queryParams.ClaimNumber]" doc:name="claimNumber" doc:id="68eba35c-6186-4129-8343-85b4e3fc3e7f" variableName="claimNumber" />
+        <flow-ref doc:name="service-validate-claim" doc:id="2ef91418-8441-48e6-9fe8-e1efaff19b80" name="service-validate-claim" />
+    </flow>
+</mule>

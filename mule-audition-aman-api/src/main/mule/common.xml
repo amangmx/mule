@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:vm="http://www.mulesoft.org/schema/mule/vm" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:eureka-mule="http://www.mulesoft.org/schema/mule/eureka-mule" xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:salesforce-analytics="http://www.mulesoft.org/schema/mule/salesforce-analytics" xmlns:springcloud-properties-provider="http://www.mulesoft.org/schema/mule/springcloud-properties-provider" xmlns:wsc="http://www.mulesoft.org/schema/mule/wsc" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd http://www.mulesoft.org/schema/mule/eureka-mule http://www.mulesoft.org/schema/mule/eureka-mule/current/mule-eureka-mule.xsd http://www.mulesoft.org/schema/mule/springcloud-properties-provider http://www.mulesoft.org/schema/mule/springcloud-properties-provider/current/mule-springcloud-properties-provider.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<configuration-properties doc:name="Configuration properties" doc:id="bf7ccd1c-25d0-4179-b896-ba4e9f0e01ef" file="config.yaml" />
+
+	<http:request-config name="HTTP_Request_security_api" doc:name="HTTP Request configuration" doc:id="7d721c51-bd33-49bb-9933-ada0bba5f8ea" basePath="${springcloud-properties-provider::endpoints.internal.security.path}" >
+		<http:request-connection host="${springcloud-properties-provider::endpoints.internal.security.host}">
+		</http:request-connection>
+	</http:request-config>
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="a504e566-adcd-4f99-b0de-a8388340bb29">
+		<vm:queues >
+			<vm:queue queueName="security-queue" />
+		</vm:queues>
+	</vm:config>
+	<os:object-store name="Object_store" doc:name="Object store" doc:id="1ae9dd0f-a0d6-4e5b-a9fd-d8d8d788ed23" />
+	<eureka-mule:config name="Eureka_Mule_Config" doc:name="Eureka Mule Config" doc:id="1a39071f-af73-45a4-97a6-5d6fdaf33e21" objectStore="Object_store">
+	<eureka-mule:applications />
+	    <eureka-mule:eureka-server serverURL="${EUREKA_URI}" eurekaPath="${EUREKA_PATH}" />
+	  <eureka-mule:application-information appId="MULE-AUDITION-AMAN-API" appHost="calculated" appPort="8081" appIpAddr="calculated" registerApp="true" appInstanceId="mule-audition-aman-api:${HOSTNAME}" appHealthCheckUrl="/health" appStatusPageUrl="/health" appHomePageUrl="/health" />
+	  </eureka-mule:config>
+	  <springcloud-properties-provider:config name="Springcloud_properties_provider_Config" doc:name="Springcloud-properties-provider Config" doc:id="80d09364-2be3-4ea7-8932-0e9e6b7f3d90" baseurl="${CLOUD_CONFIG_URI}" applicationName="mule-audition-aman-api" profileName="${SERVER_CONTEXT_URI}" />
+
+	<flow name="setup" doc:id="62aa1efd-2053-4772-88e7-e4c9be6053b0">
+		<logger level="INFO" doc:name="Log request"
+			doc:id="95d6ed7d-bf91-430c-bfb6-1ac19c7ae0ca"
+			message="##  Receiving API Request: #['\n']## URI: #[message.attributes.rawRequestUri] #['\n']## Method: #[message.attributes.method] #['\n']## Body: #[payload]" />
+		<set-variable value="#[false]"
+			doc:name="Default securityStatus"
+			doc:id="8cd47ab1-6c86-440d-b1b9-d8d363e67ced"
+			variableName="securityStatus" />
+		<vm:publish-consume doc:name="Check Security"
+			doc:id="04b7ba15-3570-4c88-854c-7ca29c46887a" config-ref="VM_Config"
+			queueName="security-queue" target="securityStatus" timeout="30">
+			<vm:content><![CDATA[#[attributes.headers['X-Iag-Auth-Consumer-System']]]]></vm:content>
+		</vm:publish-consume>
+		<choice doc:name="Security Token Validate"
+			doc:id="45ad1712-3d22-4250-9a46-11f1e5c00266">
+			<when expression="#[vars.securityStatus == true]">
+				<logger level="INFO" doc:name="Logger"
+					doc:id="8cd3c599-2145-4dc9-97ba-1ce2db2a76a3"
+					message="#['\n']## Security Token validated ok]" />
+			</when>
+			<otherwise>
+				<raise-error doc:name="Unauthorized"
+					doc:id="658b7f13-7bbb-43ce-a371-c1a3c91fe716" type="MULE:SECURITY"
+					description="Unauthorized" />
+			</otherwise>
+
+		</choice>
+
+	</flow>
+	<flow name="securityFlow"
+		doc:id="af502cff-b3ae-42a3-a1c7-d2582882af2c">
+		<vm:listener queueName="security-queue"
+			doc:name="Listener" doc:id="35e01f80-c55c-48b2-8e35-009a6b6d3f91"
+			config-ref="VM_Config" />
+		<logger level="INFO" doc:name="Log Security API call"
+			doc:id="94ca5e1c-1ce8-40b5-8a51-7236f0948ced"
+			message="#['\n']## Calling Security API:]" />
+		<http:request method="POST" doc:name="Call Security API"
+			doc:id="69feea5a-1548-4b66-9f63-9b1e674a4830"
+			config-ref="HTTP_Request_security_api"
+			path="?provider=business-api-provider&amp;apiName=${api.name}">
+			<http:body><![CDATA[#[%dw 2.0
+output application/json
+---
+{ "auth_token": payload
+	
+}]]]></http:body>
+			<http:response-validator>
+				<http:success-status-code-validator
+					values="200..500" />
+			</http:response-validator>
+		</http:request>
+		<logger level="INFO" doc:name="Log Security API response"
+			doc:id="ba163c8c-080f-4d16-af0e-498407c9c31e"
+			message="#['\n']## Security API Response: #[attributes.statusCode] #['\n']## Body: #[payload]" />
+		<ee:transform doc:name="Check Http OK and Scope OK"
+			doc:id="8450c0ed-9502-4e79-a4a2-3e7dd24efb2b">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/java
+var httpOk = attributes.statusCode == 200
+var scope = if (payload.jwt_token.scope == null) (['']) else (payload.jwt_token.scope)
+var scopeOk = sizeOf (scope filter (item, index) ->  item contains p('springcloud-properties-provider::token.scope')) > 0
+---
+httpOk and scopeOk]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+
+	</flow>	
+</mule>
